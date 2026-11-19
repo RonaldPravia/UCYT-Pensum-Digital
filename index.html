@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Académico UCYT - Pensum Digital con Login Seguro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; font-size: 11px; }
+      .print-shadow-none { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+      .break-inside-avoid { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- ================= NOTIFICACIÓN TOAST FLOTANTE ================= -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ================= MODAL DE HORARIOS / OFERTA MULTIMODAL ================= -->
+  <div id="scheduleModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 text-left relative overflow-hidden">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Alternativas de Horarios</span>
+          <h3 id="modalCourseTitle" class="text-base font-bold text-slate-900 mt-1">Oferta de Asignatura</h3>
+        </div>
+        <button onclick="closeScheduleModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          Si tienes esta materia pendiente o necesitas cursarla en otro turno para no retrasarte, puedes seleccionarla en cualquiera de estas opciones disponibles en UCYT:
+        </p>
+
+        <!-- Turno Diurno Presencial -->
+        <div class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-sun text-amber-500"></i> Turno Diurno (Presencial - Lunes a Viernes)
+            </span>
+            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">Cupos: 18</span>
+          </div>
+          <p class="text-[11px] text-amber-800">Horario: Lunes y Miércoles &bull; 8:00 AM - 10:15 AM</p>
+          <p class="text-[10px] text-slate-500 mt-1">Aula: Edificio B - Laboratorio de Informática 2</p>
+        </div>
+
+        <!-- Turno Por Encuentro Sabatino -->
+        <div class="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-blue-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-calendar-week text-blue-500"></i> Turno Por Encuentro (Sabatino)
+            </span>
+            <span class="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded-full">Cupos: 12</span>
+          </div>
+          <p class="text-[11px] text-blue-800">Horario: Sábados &bull; 1:00 PM - 4:45 PM</p>
+          <p class="text-[10px] text-slate-500 mt-1">Aula: Edificio A - Aula 201</p>
+        </div>
+      </div>
+
+      <div class="mt-5 pt-3 border-t flex justify-end">
+        <button onclick="closeScheduleModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PANTALLA DE INICIO DE SESIÓN CON USUARIO Y CONTRASEÑA ================= -->
+  <div id="loginScreen" class="fixed inset-0 z-50 bg-gradient-to-br from-blue-950 via-slate-900 to-indigo-950 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-md w-full p-8 text-center relative overflow-hidden">
+      
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 text-blue-950 font-black text-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-500/20">
+        U
+      </div>
+      <h2 class="text-xl font-bold text-slate-900">UCYT &bull; Pensum Digital</h2>
+      <p class="text-xs text-slate-500 mt-0.5 mb-5">Ingreso al Sistema Académico Institucional</p>
+
+      <!-- Selector de Rol para Login -->
+      <div class="grid grid-cols-2 gap-2 mb-5 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+        <button id="loginTabStudent" onclick="selectLoginTab('student')" class="py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-sm">
+          <i class="fa-solid fa-user-graduate"></i> Estudiante
+        </button>
+        <button id="loginTabTeacher" onclick="selectLoginTab('teacher')" class="py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
+          <i class="fa-solid fa-chalkboard-user"></i> Docente
+        </button>
+      </div>
+
+      <!-- Formulario para Estudiante -->
+      <div id="studentLoginForm" class="space-y-3.5 text-left">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Usuario / Carnet de Estudiante</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-id-card"></i>
+            </span>
+            <input type="text" id="studentUsernameInput" value="2026-INF-001" placeholder="Ej. 2026-INF-001" class="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="studentPasswordInput" value="estudiante123" placeholder="••••••••" class="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50">
+          </div>
+          <div class="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+            <span>Demo: <strong>2026-INF-001</strong> / <strong>estudiante123</strong></span>
+          </div>
+        </div>
+
+        <button onclick="handleStudentLogin()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 mt-2">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          <span>Iniciar Sesión como Estudiante</span>
+        </button>
+
+        <!-- Botón para Registrar Nuevo Ingreso -->
+        <div class="pt-2 text-center">
+          <button type="button" onclick="toggleRegisterModal(true)" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition">
+            ¿Eres de nuevo ingreso? Regístrate aquí
+          </button>
+        </div>
+      </div>
+
+      <!-- Formulario para Docente / Coordinador -->
+      <div id="teacherLoginForm" class="hidden space-y-3.5 text-left">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Usuario Docente / Coordinación</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-chalkboard-user"></i>
+            </span>
+            <input type="text" id="teacherUsername" value="coordinacion.informatica" class="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="teacherPassword" value="ucyt2026" class="w-full pl-9 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50">
+          </div>
+          <div class="text-[10px] text-amber-700 mt-1">
+            Demo docente: <strong>coordinacion.informatica</strong> / <strong>ucyt2026</strong>
+          </div>
+        </div>
+        <button onclick="handleTeacherLogin()" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-amber-600/30 flex items-center justify-center gap-2 mt-2">
+          <i class="fa-solid fa-shield"></i>
+          <span>Ingresar al Módulo Docente</span>
+        </button>
+      </div>
+
+      <div class="mt-5 pt-3 border-t border-slate-100 text-center text-[10px] text-slate-400">
+        Universidad Nicaragüense de Ciencia y Tecnología &copy; 2026
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL DE REGISTRO NUEVO INGRESO ================= -->
+  <div id="registerModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full p-6 text-left relative overflow-hidden">
+      <div class="flex items-center justify-between border-b pb-3 mb-4">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Nuevo Ingreso 2026</span>
+          <h3 class="text-base font-bold text-slate-900 mt-1">Crear Cuenta de Estudiante</h3>
+        </div>
+        <button onclick="toggleRegisterModal(false)" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleRegisterStudent(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nombre Completo</label>
+          <input type="text" id="regName" required placeholder="Ej. Ronald Pravia" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Carnet Asignado</label>
+            <input type="text" id="regCarnet" required placeholder="2026-INF-004" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Modalidad</label>
+            <select id="regModality" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium">
+              <option value="presencial">Presencial Diurno (4 Años)</option>
+              <option value="encuentro">Por Encuentro (5 Años)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Contraseña Nueva</label>
+          <input type="password" id="regPassword" required placeholder="Crea tu contraseña" class="w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+        </div>
+
+        <div class="pt-3 border-t flex justify-end gap-2">
+          <button type="button" onclick="toggleRegisterModal(false)" class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-medium transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow-sm">
+            Crear y Acceder
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= BARRA SUPERIOR ================= -->
+  <header class="bg-gradient-to-r from-blue-950 via-indigo-900 to-slate-900 text-white shadow-lg no-print sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+      
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-400 flex items-center justify-center text-blue-950 font-black text-xl shadow-md">
+          U
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight">UCYT &bull; Pensum Digital</h1>
+            <span id="roleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              Vista Estudiante
+            </span>
+          </div>
+          <p class="text-xs text-blue-200">Informática y Computación &bull; Plan Oficial 2026-2030</p>
+        </div>
+      </div>
+
+      <div class="flex items-center flex-wrap gap-2.5">
+        <div class="flex items-center gap-2 bg-blue-900/60 px-3 py-1.5 rounded-xl border border-blue-400/20 text-xs">
+          <i id="userProfileIcon" class="fa-solid fa-circle-user text-amber-300"></i>
+          <span id="loggedUserName" class="font-semibold text-slate-100">Carlos E. Mendoza</span>
+        </div>
+
+        <button onclick="window.print()" class="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-slate-700">
+          <i class="fa-solid fa-print"></i> Imprimir
+        </button>
+        <button onclick="exportData()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-download"></i> Guardar Ficha
+        </button>
+
+        <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 text-rose-200 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-rose-700/50">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Banner Informativo -->
+  <div id="roleBanner" class="bg-blue-50 border-b border-blue-100 py-2 px-4 no-print transition-colors">
+    <div class="max-w-7xl mx-auto flex items-center justify-between text-xs text-blue-900 font-medium">
+      <div class="flex items-center gap-2">
+        <i id="bannerIcon" class="fa-solid fa-shield-halved text-blue-600"></i>
+        <span id="bannerText"><strong>Control de Prerrequisitos y Horarios:</strong> Las materias avanzadas permanecen bloqueadas hasta aprobar los prerrequisitos requeridos.</span>
+      </div>
+      <span class="text-[11px] text-blue-600/80 hidden sm:inline"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Soporte Presencial y Por Encuentro</span>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+    <!-- Panel Lateral Izquierdo -->
+    <aside class="lg:col-span-1 space-y-5">
+      
+      <!-- Selector de Modalidad (Presencial Diurno vs Por Encuentro) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5">
+        <h2 class="text-xs font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider mb-3">
+          <i class="fa-solid fa-sliders text-indigo-600"></i> Modalidad de Estudio
+        </h2>
+        <div class="space-y-2">
+          <button id="btnModPresencial" onclick="switchModality('presencial')" class="w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-slate-50 border-slate-200 hover:border-indigo-300">
+            <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+              <i class="fa-solid fa-sun"></i>
+            </div>
+            <div>
+              <div class="font-bold text-xs text-slate-800">Presencial / Diurno</div>
+              <div class="text-[10px] text-slate-500">4 Años &bull; 12 Cuatrimestres (Lunes a Viernes)</div>
+            </div>
+          </button>
+
+          <button id="btnModEncuentro" onclick="switchModality('encuentro')" class="w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-indigo-50 border-indigo-400 shadow-xs">
+            <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <div>
+              <div class="font-bold text-xs text-indigo-950">Por Encuentro</div>
+              <div class="text-[10px] text-indigo-700">5 Años &bull; 15 Cuatrimestres (Sabatino / Dominical)</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel de Docente: Selector de Estudiante -->
+      <div id="teacherStudentSelectorBox" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm no-print">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+            <i class="fa-solid fa-users text-amber-700"></i> Expedientes de Alumnos
+          </h3>
+          <span class="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-bold">UCYT</span>
+        </div>
+        <p class="text-[11px] text-amber-900/80 mb-2">Selecciona el expediente que deseas calificar o matricular:</p>
+        <select id="teacherStudentSelect" onchange="switchStudentByTeacher(this.value)" class="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+          <!-- Opciones dinámicas -->
+        </select>
+      </div>
+
+      <!-- Ficha del Estudiante -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-id-card text-indigo-600"></i> Expediente
+          </h2>
+          <span id="badgeTipoIngreso" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wide">
+            Nuevo Ingreso
+          </span>
+        </div>
+        
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Nombre Completo</label>
+            <input id="studentName" type="text" class="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none text-slate-700 font-medium" value="Carlos Eduardo Mendoza">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Carnet Institucional</label>
+            <input id="studentId" type="text" class="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none text-slate-700 font-medium" value="2026-INF-001">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Carrera</label>
+            <input type="text" readonly class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-medium cursor-not-allowed" value="Informática y Computación (UCYT)">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Cohorte</label>
+              <input id="studentCohort" type="text" class="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none text-slate-700" value="2026 - 2030">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-1">Modalidad</label>
+              <input id="studentMode" type="text" readonly class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-slate-700 font-semibold" value="Por Encuentro">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen Académico Dinámico -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3 mb-4">
+          <i class="fa-solid fa-chart-line text-emerald-600"></i> Progreso Curricular
+        </h2>
+
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1.5">
+              <span>Avance de Carrera</span>
+              <span id="progressPercent" class="text-indigo-600 font-bold">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="progressBar" class="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 text-center">
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span class="block text-[11px] text-slate-500">Créditos Aprobados</span>
+              <span id="approvedCredits" class="text-base font-bold text-emerald-600">0</span>
+              <span class="text-[10px] text-slate-400">de <span id="totalCredits">176</span></span>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span class="block text-[11px] text-slate-500">En Curso</span>
+              <span id="currentCredits" class="text-base font-bold text-blue-600">13</span>
+              <span class="text-[10px] text-slate-400">créditos</span>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span class="block text-[11px] text-slate-500">Materias Aprobadas</span>
+              <span id="approvedSubjects" class="text-base font-bold text-slate-800">0</span>
+              <span class="text-[10px] text-slate-400">de 57</span>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span class="block text-[11px] text-slate-500">Promedio Ponderado</span>
+              <span id="gpaScore" class="text-base font-bold text-amber-600">--</span>
+              <span class="text-[10px] text-slate-400">pts</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Atajo de Carga Académica de Nuevo Ingreso -->
+      <div id="nuevoIngresoBox" class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 no-print shadow-sm">
+        <h3 class="text-xs font-bold text-indigo-950 flex items-center gap-1.5 mb-1">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-600"></i> Inscribir Nuevo Ingreso
+        </h3>
+        <p class="text-[11px] text-indigo-800/80 mb-3 leading-relaxed">
+          Inscribe automáticamente el bloque del I Cuatrimestre según la modalidad seleccionada.
+        </p>
+        <button onclick="enrollFirstCuatrimestre()" class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-book-open-reader"></i> Inscribir I Cuatrimestre
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- Contenido Principal: Malla Curricular UCYT -->
+    <section class="lg:col-span-3 space-y-5">
+      
+      <!-- Barra Superior de Filtros y Búsqueda -->
+      <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div id="yearButtonsGroup" class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
+          <!-- Botones de año generados por JS -->
+        </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <input id="searchInput" oninput="renderCurriculum()" type="text" placeholder="Buscar materia, código o prerrequisito..." class="px-3 py-1.5 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 w-56">
+        </div>
+      </div>
+
+      <!-- Contenedor dinámico de Cuatrimestres -->
+      <div id="cuatrimestresContainer" class="space-y-5">
+        <!-- Renderizado dinámico con JS -->
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto no-print">
+    Portal de Pensum Digital UCYT &copy; 2026. Control de Prerrequisitos y Consulta de Horarios Diurno / Encuentro.
+  </footer>
+
+  <script>
+    // ====================================================================
+    // PENSUM OFICIAL 1: MODALIDAD POR ENCUENTRO (15 Cuatrimestres / 5 Años)
+    // ====================================================================
+    const pensumEncuentro = [
+      {
+        year: 1, cuatrimestreNum: 1, name: "PRIMER CUATRIMESTRE (Nuevo Ingreso)", isNewAdmission: true,
+        courses: [
+          { no: 1, af: "B", code: "AN-1200", name: "ADMINISTRACIÓN GENERAL", credits: 3, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 2, af: "B", code: "EG-1512", name: "FILOSOFÍA", credits: 3, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 3, af: "G", code: "CU-2025", name: "IDENTIDAD NACIONAL Y ORGULLO PATRIO", credits: 4, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 4, af: "B", code: "EG-1550", name: "MATEMÁTICA BÁSICA", credits: 3, req: "NINGUNO", status: "cursando", grade: "" }
+        ]
+      },
+      {
+        year: 1, cuatrimestreNum: 2, name: "SEGUNDO CUATRIMESTRE",
+        courses: [
+          { no: 5, af: "B", code: "EG-1561", name: "CÁLCULO", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 6, af: "B", code: "AN-1210", name: "CONTABILIDAD I", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 7, af: "B", code: "EG-1520", name: "INGLÉS I", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 8, af: "B", code: "EG-1540", name: "INTRODUCCIÓN A LA COMPUTACIÓN", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 1, cuatrimestreNum: 3, name: "TERCER CUATRIMESTRE",
+        courses: [
+          { no: 9, af: "G", code: "IF-1600", name: "COMPUTACIÓN", credits: 3, req: "EG-1540", status: "pendiente", grade: "" },
+          { no: 10, af: "B", code: "AN-1220", name: "ESTADÍSTICA", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 11, af: "G", code: "HIN-0101", name: "HISTORIA E IDENTIDAD NACIONAL", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 12, af: "B", code: "EG-1521", name: "INGLÉS II", credits: 3, req: "EG-1520", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 4, name: "CUARTO CUATRIMESTRE",
+        courses: [
+          { no: 13, af: "G", code: "EG-1600", name: "FÍSICA I", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 14, af: "B", code: "EG-1522", name: "INGLÉS III", credits: 3, req: "EG-1521", status: "pendiente", grade: "" },
+          { no: 15, af: "B", code: "AN-1250", name: "MERCADOTECNIA BÁSICA", credits: 3, req: "AN-1220", status: "pendiente", grade: "" },
+          { no: 16, af: "G", code: "IF-3100", name: "SISTEMAS OPERATIVOS", credits: 3, req: "IF-1600", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 5, name: "QUINTO CUATRIMESTRE",
+        courses: [
+          { no: 17, af: "B", code: "IF-1300", name: "ESTRUCTURA DE DATOS Y ALGORITMO I", credits: 3, req: "IF-1600", status: "pendiente", grade: "" },
+          { no: 18, af: "B", code: "EG-1610", name: "FÍSICA II", credits: 3, req: "EG-1600", status: "pendiente", grade: "" },
+          { no: 19, af: "G", code: "AN-1240", name: "INGENIERÍA ECONÓMICA", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 20, af: "B", code: "EG-1523", name: "INGLÉS IV", credits: 3, req: "EG-1522", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 6, name: "SEXTO CUATRIMESTRE",
+        courses: [
+          { no: 21, af: "B", code: "IF-1700", name: "ESTRUCTURA DE DATOS Y ALGORITMOS II", credits: 3, req: "IF-1300", status: "pendiente", grade: "" },
+          { no: 22, af: "G", code: "AN-1213", name: "FINANZAS", credits: 3, req: "AN-1240", status: "pendiente", grade: "" },
+          { no: 23, af: "B", code: "EG-1524", name: "INGLÉS V", credits: 3, req: "EG-1523", status: "pendiente", grade: "" },
+          { no: 24, af: "G", code: "ID-1600", name: "METODOLOGÍA DE LA INVESTIGACIÓN I", credits: 3, req: "AN-1220", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 7, name: "SÉPTIMO CUATRIMESTRE",
+        courses: [
+          { no: 25, af: "E", code: "AN-1202", name: "ADMINISTRACIÓN DE RECURSOS HUMANOS", credits: 3, req: "AN-1200", status: "pendiente", grade: "" },
+          { no: 26, af: "E", code: "EG-1650", name: "CIRCUITOS ELÉCTRICOS", credits: 3, req: "EG-1610", status: "pendiente", grade: "" },
+          { no: 27, af: "G", code: "AN-1280", name: "FORMULACIÓN DE PROYECTOS", credits: 3, req: "ID-1600", status: "pendiente", grade: "" },
+          { no: 28, af: "B", code: "EG-1525", name: "INGLÉS VI", credits: 3, req: "EG-1524", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 8, name: "OCTAVO CUATRIMESTRE",
+        courses: [
+          { no: 29, af: "E", code: "IF-3300", name: "BASE DE DATOS I", credits: 3, req: "IF-1300", status: "pendiente", grade: "" },
+          { no: 30, af: "E", code: "EG-1660", name: "ELECTRÓNICA", credits: 3, req: "EG-1650", status: "pendiente", grade: "" },
+          { no: 31, af: "G", code: "ID-1601", name: "METODOLOGÍA DE LA INVESTIGACIÓN II", credits: 3, req: "ID-1600", status: "pendiente", grade: "" },
+          { no: 32, af: "E", code: "IF-1100", name: "PROGRAMACIÓN DE COMPUTADORAS I", credits: 3, req: "IF-1700", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 9, name: "NOVENO CUATRIMESTRE",
+        courses: [
+          { no: 33, af: "E", code: "IF-2290", name: "ADMINISTRACIÓN DE CENTROS DE CÓMPUTOS", credits: 3, req: "AN-1202", status: "pendiente", grade: "" },
+          { no: 34, af: "E", code: "IF-3600", name: "BASES DE DATOS II", credits: 3, req: "IF-3300", status: "pendiente", grade: "" },
+          { no: 35, af: "E", code: "IF-3310", name: "DISEÑO GRÁFICO", credits: 3, req: "EG-1540", status: "pendiente", grade: "" },
+          { no: 36, af: "E", code: "IF-2500", name: "ORGANIZACIÓN Y ARQUITECTURA DE COMPUTADORAS", credits: 3, req: "EG-1660", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 10, name: "DÉCIMO CUATRIMESTRE",
+        courses: [
+          { no: 37, af: "E", code: "IF-1900", name: "ANÁLISIS Y DISEÑO DE SISTEMAS I", credits: 3, req: "IF-3600", status: "pendiente", grade: "" },
+          { no: 38, af: "E", code: "IF-3320", name: "DISEÑO DE SITIOS WEB", credits: 3, req: "IF-3310", status: "pendiente", grade: "" },
+          { no: 39, af: "E", code: "IF-2510", name: "MANTENIMIENTO Y REPARACIÓN DE EQUIPOS", credits: 3, req: "IF-3100", status: "pendiente", grade: "" },
+          { no: 40, af: "E", code: "IF-1400", name: "PROGRAMACIÓN DE COMPUTADORAS II", credits: 3, req: "IF-1100", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 11, name: "DÉCIMO PRIMER CUATRIMESTRE",
+        courses: [
+          { no: 41, af: "E", code: "IF-2100", name: "ANÁLISIS Y DISEÑO DE SISTEMAS II", credits: 3, req: "IF-1900", status: "pendiente", grade: "" },
+          { no: 42, af: "E", code: "IF-2600", name: "COMUNICACIÓN DE DATOS", credits: 3, req: "EG-1610", status: "pendiente", grade: "" },
+          { no: 43, af: "E", code: "IF-2000", name: "INVESTIGACIÓN DE OPERACIONES", credits: 3, req: "AN-1240", status: "pendiente", grade: "" },
+          { no: 44, af: "E", code: "IF-1450", name: "PROGRAMACIÓN ORIENTADA A OBJETOS I", credits: 3, req: "IF-1400", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 12, name: "DÉCIMO SEGUNDO CUATRIMESTRE",
+        courses: [
+          { no: 45, af: "E", code: "IF-2700", name: "INGENIERÍA DE SOFTWARE", credits: 3, req: "IF-2100", status: "pendiente", grade: "" },
+          { no: 46, af: "E", code: "IF-3321", name: "PROGRAMACIÓN DE SITIOS WEB", credits: 3, req: "IF-3310", status: "pendiente", grade: "" },
+          { no: 47, af: "E", code: "IF-1451", name: "PROGRAMACIÓN ORIENTADA A OBJETOS II", credits: 3, req: "IF-1450", status: "pendiente", grade: "" },
+          { no: 48, af: "E", code: "IF-3200", name: "REDES I", credits: 3, req: "IF-2600", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 5, cuatrimestreNum: 13, name: "DÉCIMO TERCER CUATRIMESTRE",
+        courses: [
+          { no: 49, af: "E", code: "IF-2900", name: "AUDITORÍA DE SISTEMAS AUTOMATIZADOS", credits: 3, req: "IF-2290", status: "pendiente", grade: "" },
+          { no: 50, af: "G", code: "AN-2260", name: "ESTRATEGIA Y GESTIÓN EMPRESARIAL", credits: 3, req: "AN-1280", status: "pendiente", grade: "" },
+          { no: 51, af: "E", code: "ID-2610", name: "SERVICIO COMUNAL Y/O SOCIAL", credits: 3, req: "AUTORIZACIÓN", status: "pendiente", grade: "" },
+          { no: 52, af: "E", code: "IF-3210", name: "REDES II", credits: 3, req: "IF-3200", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 5, cuatrimestreNum: 14, name: "DÉCIMO CUARTO CUATRIMESTRE",
+        courses: [
+          { no: 53, af: "E", code: "IF-1452", name: "INTELIGENCIA ARTIFICIAL", credits: 3, req: "IF-1100", status: "pendiente", grade: "" },
+          { no: 54, af: "E", code: "ID-1610", name: "PRÁCTICAS DE FAMILIARIZACIÓN Y PROFESIONALES", credits: 7, req: "AUTORIZACIÓN", status: "pendiente", grade: "" },
+          { no: 55, af: "E", code: "IF-3000", name: "SIMULACIÓN DE SISTEMAS", credits: 3, req: "IF-2700", status: "pendiente", grade: "" },
+          { no: 56, af: "E", code: "ID-2620", name: "TESIS", credits: 3, req: "AUTORIZACIÓN", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 5, cuatrimestreNum: 15, name: "DÉCIMO QUINTO CUATRIMESTRE",
+        courses: [
+          { no: 57, af: "E", code: "ID-2630", name: "MODALIDAD DE GRADUACIÓN", credits: 3, req: "14 CUATRIMESTRES APROBADOS", status: "pendiente", grade: "" }
+        ]
+      }
+    ];
+
+    // ====================================================================
+    // PENSUM OFICIAL 2: MODALIDAD PRESENCIAL / DIURNO (12 Cuatrimestres / 4 Años)
+    // ====================================================================
+    const pensumPresencial = [
+      {
+        year: 1, cuatrimestreNum: 1, name: "PRIMER CUATRIMESTRE (Nuevo Ingreso)", isNewAdmission: true,
+        courses: [
+          { no: 1, af: "B", code: "AN-1200", name: "ADMINISTRACIÓN GENERAL", credits: 3, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 2, af: "B", code: "EG-1512", name: "FILOSOFÍA", credits: 3, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 3, af: "G", code: "CU-2025", name: "IDENTIDAD NACIONAL Y ORGULLO PATRIO", credits: 4, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 4, af: "B", code: "EG-1520", name: "INGLÉS I", credits: 3, req: "NINGUNO", status: "cursando", grade: "" },
+          { no: 5, af: "B", code: "EG-1550", name: "MATEMÁTICA BÁSICA", credits: 3, req: "NINGUNO", status: "cursando", grade: "" }
+        ]
+      },
+      {
+        year: 1, cuatrimestreNum: 2, name: "SEGUNDO CUATRIMESTRE",
+        courses: [
+          { no: 6, af: "B", code: "EG-1561", name: "CÁLCULO", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 7, af: "B", code: "AN-1210", name: "CONTABILIDAD I", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 8, af: "B", code: "AN-1220", name: "ESTADÍSTICA", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 9, af: "B", code: "EG-1521", name: "INGLÉS II", credits: 3, req: "EG-1520", status: "pendiente", grade: "" },
+          { no: 10, af: "B", code: "EG-1540", name: "INTRODUCCIÓN A LA COMPUTACIÓN", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 1, cuatrimestreNum: 3, name: "TERCER CUATRIMESTRE",
+        courses: [
+          { no: 11, af: "G", code: "IF-1600", name: "COMPUTACIÓN", credits: 3, req: "EG-1540", status: "pendiente", grade: "" },
+          { no: 12, af: "G", code: "EG-1600", name: "FÍSICA I", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 13, af: "G", code: "HIN-0101", name: "HISTORIA E IDENTIDAD NACIONAL", credits: 3, req: "NINGUNO", status: "pendiente", grade: "" },
+          { no: 14, af: "B", code: "EG-1522", name: "INGLÉS III", credits: 3, req: "EG-1521", status: "pendiente", grade: "" },
+          { no: 15, af: "B", code: "AN-1250", name: "MERCADOTECNIA BÁSICA", credits: 3, req: "AN-1220", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 4, name: "CUARTO CUATRIMESTRE",
+        courses: [
+          { no: 16, af: "B", code: "IF-1300", name: "ESTRUCTURA DE DATOS Y ALGORITMO I", credits: 3, req: "IF-1600", status: "pendiente", grade: "" },
+          { no: 17, af: "B", code: "EG-1610", name: "FÍSICA II", credits: 3, req: "EG-1600", status: "pendiente", grade: "" },
+          { no: 18, af: "G", code: "AN-1240", name: "INGENIERÍA ECONÓMICA", credits: 3, req: "EG-1550", status: "pendiente", grade: "" },
+          { no: 19, af: "B", code: "EG-1523", name: "INGLÉS IV", credits: 3, req: "EG-1522", status: "pendiente", grade: "" },
+          { no: 20, af: "G", code: "IF-3100", name: "SISTEMAS OPERATIVOS", credits: 3, req: "IF-1600", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 5, name: "QUINTO CUATRIMESTRE",
+        courses: [
+          { no: 21, af: "E", code: "AN-1202", name: "ADMINISTRACIÓN DE RECURSOS HUMANOS", credits: 3, req: "AN-1200", status: "pendiente", grade: "" },
+          { no: 22, af: "B", code: "IF-1700", name: "ESTRUCTURA DE DATOS Y ALGORITMOS II", credits: 3, req: "IF-1300", status: "pendiente", grade: "" },
+          { no: 23, af: "G", code: "AN-1213", name: "FINANZAS", credits: 3, req: "AN-1240", status: "pendiente", grade: "" },
+          { no: 24, af: "B", code: "EG-1524", name: "INGLÉS V", credits: 3, req: "EG-1523", status: "pendiente", grade: "" },
+          { no: 25, af: "G", code: "ID-1600", name: "METODOLOGÍA DE LA INVESTIGACIÓN I", credits: 3, req: "AN-1220", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 2, cuatrimestreNum: 6, name: "SEXTO CUATRIMESTRE",
+        courses: [
+          { no: 26, af: "E", code: "IF-3300", name: "BASE DE DATOS I", credits: 3, req: "IF-1300", status: "pendiente", grade: "" },
+          { no: 27, af: "E", code: "EG-1650", name: "CIRCUITOS ELÉCTRICOS", credits: 3, req: "EG-1610", status: "pendiente", grade: "" },
+          { no: 28, af: "G", code: "AN-1280", name: "FORMULACIÓN DE PROYECTOS", credits: 3, req: "ID-1600", status: "pendiente", grade: "" },
+          { no: 29, af: "B", code: "EG-1525", name: "INGLÉS VI", credits: 3, req: "EG-1524", status: "pendiente", grade: "" },
+          { no: 30, af: "G", code: "ID-1601", name: "METODOLOGÍA DE LA INVESTIGACIÓN II", credits: 3, req: "ID-1600", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 7, name: "SÉPTIMO CUATRIMESTRE",
+        courses: [
+          { no: 31, af: "E", code: "IF-2290", name: "ADMINISTRACIÓN DE CENTROS DE CÓMPUTOS", credits: 3, req: "AN-1202", status: "pendiente", grade: "" },
+          { no: 32, af: "E", code: "IF-3600", name: "BASES DE DATOS II", credits: 3, req: "IF-3300", status: "pendiente", grade: "" },
+          { no: 33, af: "E", code: "IF-3310", name: "DISEÑO GRÁFICO", credits: 3, req: "EG-1540", status: "pendiente", grade: "" },
+          { no: 34, af: "E", code: "EG-1660", name: "ELECTRÓNICA", credits: 3, req: "EG-1650", status: "pendiente", grade: "" },
+          { no: 35, af: "E", code: "IF-1100", name: "PROGRAMACIÓN DE COMPUTADORAS I", credits: 3, req: "IF-1700", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 8, name: "OCTAVO CUATRIMESTRE",
+        courses: [
+          { no: 36, af: "E", code: "IF-1900", name: "ANÁLISIS Y DISEÑO DE SISTEMAS I", credits: 3, req: "IF-3600", status: "pendiente", grade: "" },
+          { no: 37, af: "E", code: "IF-2150", name: "DISEÑO DE SITIOS WEB", credits: 3, req: "IF-3310", status: "pendiente", grade: "" },
+          { no: 38, af: "E", code: "IF-2510", name: "MANTENIMIENTO Y REPARACIÓN DE EQUIPOS", credits: 3, req: "IF-3100", status: "pendiente", grade: "" },
+          { no: 39, af: "E", code: "IF-2500", name: "ORGANIZACIÓN Y ARQUITECTURA DE COMPUTADORAS", credits: 3, req: "EG-1660", status: "pendiente", grade: "" },
+          { no: 40, af: "E", code: "IF-1400", name: "PROGRAMACIÓN DE COMPUTADORAS II", credits: 3, req: "IF-1100", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 3, cuatrimestreNum: 9, name: "NOVENO CUATRIMESTRE",
+        courses: [
+          { no: 41, af: "E", code: "IF-2100", name: "ANÁLISIS Y DISEÑO DE SISTEMAS II", credits: 3, req: "IF-1900", status: "pendiente", grade: "" },
+          { no: 42, af: "E", code: "IF-2600", name: "COMUNICACIÓN DE DATOS", credits: 3, req: "EG-1610", status: "pendiente", grade: "" },
+          { no: 43, af: "E", code: "IF-2000", name: "INVESTIGACIÓN DE OPERACIONES", credits: 3, req: "AN-1240", status: "pendiente", grade: "" },
+          { no: 44, af: "E", code: "IF-1450", name: "PROGRAMACIÓN ORIENTADA A OBJETOS I", credits: 3, req: "IF-1400", status: "pendiente", grade: "" },
+          { no: 45, af: "E", code: "IF-3320", name: "PROGRAMACIÓN DE SITIOS WEB", credits: 3, req: "IF-3310", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 10, name: "DÉCIMO CUATRIMESTRE",
+        courses: [
+          { no: 46, af: "E", code: "IF-2900", name: "AUDITORÍA DE SISTEMAS AUTOMATIZADOS", credits: 3, req: "IF-2290", status: "pendiente", grade: "" },
+          { no: 47, af: "G", code: "AN-2260", name: "ESTRATEGIA Y GESTIÓN EMPRESARIAL", credits: 3, req: "AN-1280", status: "pendiente", grade: "" },
+          { no: 48, af: "E", code: "IF-2700", name: "INGENIERÍA DE SOFTWARE", credits: 3, req: "IF-2100", status: "pendiente", grade: "" },
+          { no: 49, af: "E", code: "IF-1451", name: "PROGRAMACIÓN ORIENTADA A OBJETOS II", credits: 3, req: "IF-1450", status: "pendiente", grade: "" },
+          { no: 50, af: "E", code: "IF-3200", name: "REDES I", credits: 3, req: "IF-2600", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 11, name: "DÉCIMO PRIMER CUATRIMESTRE",
+        courses: [
+          { no: 51, af: "E", code: "IF-1452", name: "INTELIGENCIA ARTIFICIAL", credits: 3, req: "IF-1100", status: "pendiente", grade: "" },
+          { no: 52, af: "E", code: "ID-1610", name: "PRÁCTICAS DE FAMILIARIZACIÓN Y PROFESIONALES", credits: 7, req: "AUTORIZACIÓN", status: "pendiente", grade: "" },
+          { no: 53, af: "E", code: "IF-3210", name: "REDES II", credits: 3, req: "IF-3200", status: "pendiente", grade: "" },
+          { no: 54, af: "E", code: "ID-2610", name: "SERVICIO COMUNAL Y/O SOCIAL", credits: 3, req: "AUTORIZACIÓN", status: "pendiente", grade: "" },
+          { no: 55, af: "E", code: "IF-3000", name: "SIMULACIÓN DE SISTEMAS", credits: 3, req: "IF-2700", status: "pendiente", grade: "" },
+          { no: 56, af: "E", code: "ID-2620", name: "TESIS", credits: 3, req: "AUTORIZACIÓN", status: "pendiente", grade: "" }
+        ]
+      },
+      {
+        year: 4, cuatrimestreNum: 12, name: "DÉCIMO SEGUNDO CUATRIMESTRE",
+        courses: [
+          { no: 57, af: "E", code: "ID-2630", name: "MODALIDAD DE GRADUACIÓN", credits: 3, req: "11 CUATRIMESTRES APROBADOS", status: "pendiente", grade: "" }
+        ]
+      }
+    ];
+
+    // Base de datos de Estudiantes con credenciales individuales
+    const studentsDb = [
+      {
+        id: "2026-INF-001",
+        username: "2026-INF-001",
+        password: "estudiante123",
+        name: "Carlos Eduardo Mendoza",
+        cohort: "2026 - 2030",
+        mode: "Por Encuentro",
+        modalityType: "encuentro",
+        curriculum: JSON.parse(JSON.stringify(pensumEncuentro))
+      },
+      {
+        id: "2026-INF-002",
+        username: "2026-INF-002",
+        password: "estudiante123",
+        name: "María José Morales",
+        cohort: "2026 - 2029",
+        mode: "Presencial / Diurno",
+        modalityType: "presencial",
+        curriculum: JSON.parse(JSON.stringify(pensumPresencial))
+      },
+      {
+        id: "2026-INF-003",
+        username: "2026-INF-003",
+        password: "estudiante123",
+        name: "Kevin Daniel López",
+        cohort: "2026 - 2029",
+        mode: "Presencial / Diurno",
+        modalityType: "presencial",
+        curriculum: JSON.parse(JSON.stringify(pensumPresencial))
+      }
+    ];
+
+    let currentRole = 'student';
+    let currentStudentIndex = 0;
+    let selectedYearFilter = 'todos';
+    let activeModality = 'encuentro';
+
+    function selectLoginTab(tab) {
+      const btnStudent = document.getElementById('loginTabStudent');
+      const btnTeacher = document.getElementById('loginTabTeacher');
+      const studentForm = document.getElementById('studentLoginForm');
+      const teacherForm = document.getElementById('teacherLoginForm');
+
+      if (tab === 'student') {
+        btnStudent.className = "py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-sm";
+        btnTeacher.className = "py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
+        studentForm.classList.remove('hidden');
+        teacherForm.classList.add('hidden');
+      } else {
+        btnTeacher.className = "py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-white text-amber-700 shadow-sm";
+        btnStudent.className = "py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800";
+        teacherForm.classList.remove('hidden');
+        studentForm.classList.add('hidden');
+      }
+    }
+
+    function handleStudentLogin() {
+      const user = document.getElementById('studentUsernameInput').value.trim();
+      const pass = document.getElementById('studentPasswordInput').value;
+
+      const idx = studentsDb.findIndex(s => (s.username.toLowerCase() === user.toLowerCase() || s.id.toLowerCase() === user.toLowerCase()) && s.password === pass);
+
+      if (idx !== -1) {
+        currentStudentIndex = idx;
+        const student = studentsDb[currentStudentIndex];
+        activeModality = student.modalityType;
+        loginSuccess('student');
+        showToast(`¡Bienvenido de nuevo, ${student.name}!`, "success");
+      } else {
+        showToast("Carnet o contraseña incorrectos. Revisa tus credenciales.", "error");
+      }
+    }
+
+    function handleTeacherLogin() {
+      const user = document.getElementById('teacherUsername').value.trim();
+      const pass = document.getElementById('teacherPassword').value;
+
+      if (user === "coordinacion.informatica" && pass === "ucyt2026") {
+        loginSuccess('teacher');
+        showToast("Acceso concedido al panel docente y de coordinación.", "success");
+      } else {
+        showToast("Credenciales de docente inválidas.", "error");
+      }
+    }
+
+    function toggleRegisterModal(open) {
+      const modal = document.getElementById('registerModal');
+      if (open) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    function handleRegisterStudent(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const carnet = document.getElementById('regCarnet').value.trim().toUpperCase();
+      const modality = document.getElementById('regModality').value;
+      const pass = document.getElementById('regPassword').value;
+
+      if (!name || !carnet || !pass) return;
+
+      const exists = studentsDb.some(s => s.id === carnet || s.username === carnet);
+      if (exists) {
+        showToast("Ese carnet ya se encuentra registrado.", "error");
+        return;
+      }
+
+      const newStudent = {
+        id: carnet,
+        username: carnet,
+        password: pass,
+        name: name,
+        cohort: "2026 - " + (modality === 'presencial' ? "2029" : "2030"),
+        mode: modality === 'presencial' ? 'Presencial / Diurno' : 'Por Encuentro',
+        modalityType: modality,
+        curriculum: JSON.parse(JSON.stringify(modality === 'presencial' ? pensumPresencial : pensumEncuentro))
+      };
+
+      studentsDb.push(newStudent);
+      currentStudentIndex = studentsDb.length - 1;
+      activeModality = modality;
+
+      toggleRegisterModal(false);
+      loginSuccess('student');
+      showToast(`¡Registro exitoso! Bienvenido al Pensum Digital, ${name}.`, "success");
+    }
+
+    function loginSuccess(role) {
+      currentRole = role;
+      document.getElementById('loginScreen').classList.add('hidden');
+
+      const roleBadge = document.getElementById('roleBadge');
+      const roleBanner = document.getElementById('roleBanner');
+      const bannerIcon = document.getElementById('bannerIcon');
+      const bannerText = document.getElementById('bannerText');
+      const teacherBox = document.getElementById('teacherStudentSelectorBox');
+      const loggedUserName = document.getElementById('loggedUserName');
+      const userProfileIcon = document.getElementById('userProfileIcon');
+
+      if (role === 'teacher') {
+        loggedUserName.innerText = "Prof. Ronald Pravia (Docente)";
+        userProfileIcon.className = "fa-solid fa-chalkboard-user text-amber-400";
+        
+        roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 uppercase tracking-wider";
+        roleBadge.innerText = "Modo Docente / Calificador";
+
+        roleBanner.className = "bg-amber-50 border-b border-amber-200 py-2 px-4 no-print transition-colors";
+        bannerIcon.className = "fa-solid fa-user-pen text-amber-600";
+        bannerText.innerHTML = "Estás en <strong>Modo Docente</strong>: Tienes permisos para asentar notas, validar prerrequisitos y gestionar traslados.";
+
+        teacherBox.classList.remove('hidden');
+        populateTeacherSelect();
+      } else {
+        const student = studentsDb[currentStudentIndex];
+        loggedUserName.innerText = student.name;
+        userProfileIcon.className = "fa-solid fa-circle-user text-blue-300";
+
+        roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 uppercase tracking-wider";
+        roleBadge.innerText = "Vista Estudiante";
+
+        roleBanner.className = "bg-blue-50 border-b border-blue-100 py-2 px-4 no-print transition-colors";
+        bannerIcon.className = "fa-solid fa-shield-halved text-blue-600";
+        bannerText.innerHTML = "Estás en <strong>Modo Estudiante</strong>: Las asignaturas avanzadas están bloqueadas hasta aprobar los prerrequisitos.";
+
+        teacherBox.classList.add('hidden');
+      }
+
+      updateModalityButtonsUI();
+      syncStudentProfileUI();
+      renderYearButtons();
+      renderCurriculum();
+    }
+
+    function populateTeacherSelect() {
+      const select = document.getElementById('teacherStudentSelect');
+      select.innerHTML = studentsDb.map((s, idx) => `
+        <option value="${idx}" ${idx === currentStudentIndex ? 'selected' : ''}>
+          ${s.id} &bull; ${s.name} (${s.mode})
+        </option>
+      `).join('');
+    }
+
+    function logout() {
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+
+    function switchStudentByTeacher(index) {
+      currentStudentIndex = parseInt(index);
+      activeModality = studentsDb[currentStudentIndex].modalityType;
+      updateModalityButtonsUI();
+      syncStudentProfileUI();
+      renderYearButtons();
+      renderCurriculum();
+      showToast(`Expediente cargado: ${studentsDb[currentStudentIndex].name}`, "info");
+    }
+
+    function switchModality(mode) {
+      activeModality = mode;
+      const student = studentsDb[currentStudentIndex];
+      student.modalityType = mode;
+      student.mode = mode === 'presencial' ? 'Presencial / Diurno' : 'Por Encuentro';
+      
+      if (mode === 'presencial' && student.curriculum.length !== 12) {
+        student.curriculum = JSON.parse(JSON.stringify(pensumPresencial));
+      } else if (mode === 'encuentro' && student.curriculum.length !== 15) {
+        student.curriculum = JSON.parse(JSON.stringify(pensumEncuentro));
+      }
+
+      updateModalityButtonsUI();
+      syncStudentProfileUI();
+      renderYearButtons();
+      renderCurriculum();
+      showToast(`Modalidad cambiada a: ${student.mode}`, "info");
+    }
+
+    function updateModalityButtonsUI() {
+      const btnP = document.getElementById('btnModPresencial');
+      const btnE = document.getElementById('btnModEncuentro');
+
+      if (activeModality === 'presencial') {
+        btnP.className = "w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-amber-50 border-amber-400 shadow-xs";
+        btnE.className = "w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-slate-50 border-slate-200 hover:border-slate-300";
+      } else {
+        btnE.className = "w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-indigo-50 border-indigo-400 shadow-xs";
+        btnP.className = "w-full text-left p-3 rounded-xl border transition flex items-start gap-2.5 bg-slate-50 border-slate-200 hover:border-slate-300";
+      }
+    }
+
+    function syncStudentProfileUI() {
+      const student = studentsDb[currentStudentIndex];
+      document.getElementById('studentName').value = student.name;
+      document.getElementById('studentId').value = student.id;
+      document.getElementById('studentCohort').value = student.cohort;
+      document.getElementById('studentMode').value = student.mode;
+    }
+
+    function renderYearButtons() {
+      const container = document.getElementById('yearButtonsGroup');
+      const maxYears = activeModality === 'presencial' ? 4 : 5;
+      
+      let html = `<span class="text-slate-500 font-semibold mr-1">Filtrar Año:</span>`;
+      html += `<button onclick="filterYear('todos')" class="year-filter-btn px-3 py-1.5 rounded-xl font-semibold bg-indigo-600 text-white transition text-xs shadow-sm" data-year="todos">Todos</button>`;
+      
+      for (let y = 1; y <= maxYears; y++) {
+        let label = `${y}º Año`;
+        if (y === 1) label += ' (Nuevo Ingreso)';
+        html += `<button onclick="filterYear(${y})" class="year-filter-btn px-3 py-1.5 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-xs" data-year="${y}">${label}</button>`;
+      }
+
+      container.innerHTML = html;
+      selectedYearFilter = 'todos';
+    }
+
+    // ====================================================================
+    // LÓGICA DE VALIDACIÓN DE PRERREQUISITOS
+    // ====================================================================
+    function checkPrerequisiteMet(course) {
+      const req = course.req ? course.req.trim() : "NINGUNO";
+      if (req === "NINGUNO") return { met: true, reason: "" };
+
+      const student = studentsDb[currentStudentIndex];
+
+      if (req === "AUTORIZACIÓN") {
+        return { met: true, reason: "Requiere autorización académica" };
+      }
+      if (req.includes("CUATRIMESTRES APROBADOS")) {
+        const requiredCuatris = parseInt(req);
+        let totalCoursesPassed = 0;
+        student.curriculum.forEach(c => {
+          if (c.cuatrimestreNum <= requiredCuatris) {
+            c.courses.forEach(sub => {
+              if (sub.status === 'aprobada') totalCoursesPassed++;
+            });
+          }
+        });
+        const isOk = totalCoursesPassed >= (requiredCuatris * 4);
+        return { 
+          met: isOk, 
+          reason: isOk ? "Requisito cumplido" : `Debes tener aprobados los ${req}` 
+        };
+      }
+
+      let prereqCourse = null;
+      for (const cuatri of student.curriculum) {
+        for (const c of cuatri.courses) {
+          if (c.code === req) {
+            prereqCourse = c;
+            break;
+          }
+        }
+        if (prereqCourse) break;
+      }
+
+      if (!prereqCourse) {
+        return { met: true, reason: "" };
+      }
+
+      if (prereqCourse.status === 'aprobada') {
+        return { met: true, reason: `Prerrequisito ${req} aprobado` };
+      } else {
+        return { 
+          met: false, 
+          reason: `Bloqueada: Requiere aprobar ${prereqCourse.name} (${req})` 
+        };
+      }
+    }
+
+    function filterYear(year) {
+      selectedYearFilter = year;
+      document.querySelectorAll('.year-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-year') == year) {
+          btn.className = 'year-filter-btn px-3 py-1.5 rounded-xl font-semibold bg-indigo-600 text-white transition text-xs shadow-sm';
+        } else {
+          btn.className = 'year-filter-btn px-3 py-1.5 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition text-xs';
+        }
+      });
+      renderCurriculum();
+    }
+
+    function renderCurriculum() {
+      const student = studentsDb[currentStudentIndex];
+      const container = document.getElementById('cuatrimestresContainer');
+      const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+      container.innerHTML = '';
+
+      student.curriculum.forEach((cuatrimestre) => {
+        if (selectedYearFilter !== 'todos' && cuatrimestre.year != selectedYearFilter) {
+          return;
+        }
+
+        const filteredCourses = cuatrimestre.courses.filter(c => {
+          if (!searchQuery) return true;
+          return c.name.toLowerCase().includes(searchQuery) || 
+                 c.code.toLowerCase().includes(searchQuery) ||
+                 c.req.toLowerCase().includes(searchQuery);
+        });
+
+        if (searchQuery && filteredCourses.length === 0) return;
+
+        const isPrimer = cuatrimestre.isNewAdmission;
+        const box = document.createElement('div');
+        box.className = `bg-white rounded-2xl shadow-sm border ${isPrimer ? 'border-indigo-300 ring-2 ring-indigo-500/20' : 'border-slate-200/80'} overflow-hidden break-inside-avoid`;
+
+        let rowsHtml = filteredCourses.map(course => {
+          const prereqCheck = checkPrerequisiteMet(course);
+          const isLocked = !prereqCheck.met;
+
+          let afBadge = 'bg-slate-100 text-slate-700';
+          if (course.af === 'B') afBadge = 'bg-amber-100 text-amber-800 border border-amber-200';
+          if (course.af === 'G') afBadge = 'bg-blue-100 text-blue-800 border border-blue-200';
+          if (course.af === 'E') afBadge = 'bg-purple-100 text-purple-800 border border-purple-200';
+
+          let statusBadge = '';
+          if (course.status === 'aprobada') {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-circle-check text-emerald-500"></i> Aprobada</span>`;
+          } else if (course.status === 'cursando') {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-book-open text-blue-500"></i> Cursando</span>`;
+          } else if (isLocked) {
+            statusBadge = `<span title="${prereqCheck.reason}" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200"><i class="fa-solid fa-lock text-rose-500"></i> Bloqueada</span>`;
+          } else {
+            statusBadge = `<span class="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200"><i class="fa-regular fa-clock text-slate-400"></i> Habilitada</span>`;
+          }
+
+          let actionCell = '';
+          let gradeCell = '';
+
+          if (currentRole === 'teacher') {
+            actionCell = `
+              <select onchange="updateCourseStatusByTeacher(${course.no}, this.value)" 
+                class="text-xs px-2 py-1 rounded-lg border font-medium outline-none transition cursor-pointer ${isLocked ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-amber-50/50 border-amber-300 text-amber-900'} focus:ring-1 focus:ring-amber-500">
+                <option value="pendiente" ${course.status === 'pendiente' ? 'selected' : ''}>⏳ Pendiente ${isLocked ? '(Bloqueada)' : ''}</option>
+                <option value="cursando" ${course.status === 'cursando' ? 'selected' : ''}>📘 Cursando</option>
+                <option value="aprobada" ${course.status === 'aprobada' ? 'selected' : ''}>✅ Aprobada</option>
+              </select>
+            `;
+            gradeCell = `
+              <input type="number" min="0" max="100" placeholder="-" 
+                value="${course.grade || ''}"
+                onchange="updateCourseGradeByTeacher(${course.no}, this.value)"
+                class="w-14 text-center px-1.5 py-1 border border-amber-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500 ${course.grade && course.grade >= 60 ? 'font-bold text-emerald-700 bg-emerald-50' : 'text-slate-800'}">
+            `;
+          } else {
+            actionCell = statusBadge;
+            gradeCell = course.grade ? `<span class="font-bold ${course.grade >= 60 ? 'text-emerald-600' : 'text-rose-600'}">${course.grade}</span>` : `<span class="text-slate-400">--</span>`;
+          }
+
+          return `
+            <tr class="hover:bg-slate-50/80 border-b border-slate-100 transition text-xs ${isLocked && course.status !== 'aprobada' ? 'bg-slate-50/40' : ''}">
+              <td class="px-3.5 py-3 text-center text-slate-400 font-medium">${course.no}</td>
+              <td class="px-2 py-3 text-center">
+                <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-black ${afBadge}">${course.af}</span>
+              </td>
+              <td class="px-3 py-3 font-mono font-bold ${isLocked && course.status !== 'aprobada' ? 'text-slate-500' : 'text-slate-700'}">${course.code}</td>
+              <td class="px-3.5 py-3 font-medium ${isLocked && course.status !== 'aprobada' ? 'text-slate-600' : 'text-slate-900'}">
+                <div class="flex items-center justify-between gap-2">
+                  <span>${course.name}</span>
+                  <button onclick="openScheduleModal('${course.code}', '${course.name}')" title="Ver horarios en otros turnos (Diurno / Sabatino)" class="no-print text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md transition flex items-center gap-1 font-semibold">
+                    <i class="fa-regular fa-clock"></i> Horarios
+                  </button>
+                </div>
+                ${isLocked && course.status !== 'aprobada' ? `<span class="block text-[10px] text-rose-500 font-semibold mt-0.5"><i class="fa-solid fa-ban mr-1"></i>${prereqCheck.reason}</span>` : ''}
+              </td>
+              <td class="px-3 py-3 text-center font-bold text-indigo-700">${course.credits} cr.</td>
+              <td class="px-3 py-3 text-slate-500">
+                <span class="px-2 py-0.5 rounded ${isLocked ? 'bg-rose-100 text-rose-800 font-bold border border-rose-200' : 'bg-slate-100 text-slate-600'} text-[11px] font-mono">${course.req}</span>
+              </td>
+              <td class="px-3 py-3 text-center">
+                ${actionCell}
+              </td>
+              <td class="px-3 py-3 text-center">
+                ${gradeCell}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        box.innerHTML = `
+          <div class="px-5 py-3 ${isPrimer ? 'bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-200' : 'bg-slate-50 border-b border-slate-200/80'} flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-md ${isPrimer ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'} flex items-center justify-center text-xs font-bold">
+                ${cuatrimestre.cuatrimestreNum}
+              </span>
+              <h3 class="font-bold text-slate-800 text-xs sm:text-sm tracking-wide">
+                ${cuatrimestre.name}
+              </h3>
+              ${isPrimer ? '<span class="ml-2 text-[10px] font-bold uppercase tracking-wider bg-indigo-600 text-white px-2.5 py-0.5 rounded-full shadow-xs">Carga Obligatoria Nuevo Ingreso</span>' : ''}
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium">
+              Año ${cuatrimestre.year} &bull; ${cuatrimestre.courses.length} Asignaturas
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead class="bg-slate-50/60 text-slate-500 text-[11px] font-semibold border-b border-slate-100 uppercase tracking-wider">
+                <tr>
+                  <th class="px-3 py-2 text-center w-8">No.</th>
+                  <th class="px-2 py-2 text-center w-10">A.F.</th>
+                  <th class="px-3 py-2 w-28">Código</th>
+                  <th class="px-3.5 py-2">Asignatura y Horarios</th>
+                  <th class="px-3 py-2 text-center w-20">Créditos</th>
+                  <th class="px-3 py-2 w-36">Prerrequisitos</th>
+                  <th class="px-3 py-2 text-center w-36">${currentRole === 'teacher' ? 'Gestionar Estado' : 'Estado'}</th>
+                  <th class="px-3 py-2 text-center w-20">${currentRole === 'teacher' ? 'Asentar Nota' : 'Nota'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        container.appendChild(box);
+      });
+
+      calculateSummary();
+    }
+
+    function findCourse(num) {
+      const student = studentsDb[currentStudentIndex];
+      for (const cuatri of student.curriculum) {
+        for (const course of cuatri.courses) {
+          if (course.no === num) return course;
+        }
+      }
+      return null;
+    }
+
+    function updateCourseStatusByTeacher(courseNo, newStatus) {
+      const course = findCourse(courseNo);
+      if (!course) return;
+
+      const prereqCheck = checkPrerequisiteMet(course);
+      if (!prereqCheck.met && newStatus !== 'pendiente') {
+        const confirmBypass = confirm(`⚠️ CONTROL DE PRERREQUISITOS:\n\nEl alumno no cumple el prerrequisito para "${course.name}".\n${prereqCheck.reason}.\n\n¿Deseas autorizar esta inscripción excepcional como docente/coordinador?`);
+        if (!confirmBypass) {
+          renderCurriculum();
+          return;
+        }
+        showToast(`Inscripción excepcional autorizada para ${course.code}`, "warning");
+      }
+
+      course.status = newStatus;
+      if (newStatus === 'aprobada' && !course.grade) {
+        course.grade = 80;
+      }
+      renderCurriculum();
+    }
+
+    function updateCourseGradeByTeacher(courseNo, grade) {
+      const course = findCourse(courseNo);
+      if (!course) return;
+      course.grade = grade;
+      if (Number(grade) >= 60) {
+        course.status = 'aprobada';
+        showToast(`${course.name} aprobada con ${grade} pts. Desbloqueando asignaturas dependientes...`, "success");
+      } else if (Number(grade) > 0 && Number(grade) < 60) {
+        course.status = 'pendiente';
+        showToast(`${course.name} reprobada (${grade} pts). Los prerrequisitos permanecerán bloqueados.`, "error");
+      }
+      renderCurriculum();
+    }
+
+    function enrollFirstCuatrimestre() {
+      const student = studentsDb[currentStudentIndex];
+      student.curriculum[0].courses.forEach(c => {
+        c.status = 'cursando';
+      });
+      renderCurriculum();
+      showToast(`I Cuatrimestre inscrito con éxito en modalidad ${student.mode}.`, "success");
+    }
+
+    function openScheduleModal(code, name) {
+      document.getElementById('modalCourseTitle').innerText = `${code} - ${name}`;
+      document.getElementById('scheduleModal').classList.remove('hidden');
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('scheduleModal').classList.add('hidden');
+    }
+
+    function calculateSummary() {
+      const student = studentsDb[currentStudentIndex];
+      let totalCr = 0;
+      let approvedCr = 0;
+      let currentCr = 0;
+      let approvedSubCount = 0;
+      let totalGrades = 0;
+      let countWithGrades = 0;
+
+      student.curriculum.forEach(cuatri => {
+        cuatri.courses.forEach(c => {
+          totalCr += c.credits;
+          if (c.status === 'aprobada') {
+            approvedCr += c.credits;
+            approvedSubCount++;
+            if (c.grade) {
+              totalGrades += Number(c.grade);
+              countWithGrades++;
+            }
+          } else if (c.status === 'cursando') {
+            currentCr += c.credits;
+          }
+        });
+      });
+
+      const percent = totalCr > 0 ? Math.round((approvedCr / totalCr) * 100) : 0;
+      const gpa = countWithGrades > 0 ? (totalGrades / countWithGrades).toFixed(1) : '--';
+
+      document.getElementById('totalCredits').innerText = totalCr;
+      document.getElementById('approvedCredits').innerText = approvedCr;
+      document.getElementById('currentCredits').innerText = currentCr;
+      document.getElementById('approvedSubjects').innerText = approvedSubCount;
+      document.getElementById('progressPercent').innerText = `${percent}%`;
+      document.getElementById('progressBar').style.width = `${percent}%`;
+      document.getElementById('gpaScore').innerText = gpa;
+    }
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      let bg = "bg-slate-900 text-white";
+      let icon = "fa-circle-info";
+
+      if (type === "success") { bg = "bg-emerald-700 text-white"; icon = "fa-circle-check"; }
+      if (type === "warning") { bg = "bg-amber-600 text-white"; icon = "fa-triangle-exclamation"; }
+      if (type === "error") { bg = "bg-rose-700 text-white"; icon = "fa-ban"; }
+
+      toast.className = `${bg} px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transition transform translate-y-2 opacity-0`;
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function exportData() {
+      const student = studentsDb[currentStudentIndex];
+      const payload = {
+        institucion: "UNIVERSIDAD NICARAGÜENSE DE CIENCIA Y TECNOLOGÍA (UCYT)",
+        carrera: "INFORMÁTICA Y COMPUTACIÓN",
+        modalidad: student.mode,
+        plan: activeModality === 'presencial' ? 'PENSUM 2026-2030 (PRESENCIAL DIURNO - 4 AÑOS)' : 'PENSUM 2026-2030 (POR ENCUENTRO - 5 AÑOS)',
+        exportadoPorRol: currentRole,
+        estudiante: {
+          nombre: document.getElementById('studentName').value,
+          carnet: document.getElementById('studentId').value,
+          cohorte: document.getElementById('studentCohort').value,
+          modalidad: student.mode
+        },
+        pensum: student.curriculum
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+      const dl = document.createElement('a');
+      dl.setAttribute("href", dataStr);
+      dl.setAttribute("download", `expediente_ucyt_${student.id}.json`);
+      document.body.appendChild(dl);
+      dl.click();
+      dl.remove();
+    }
+
+    // Inicialización
+    renderYearButtons();
+    syncStudentProfileUI();
+  </script>
+</body>
+</html>
