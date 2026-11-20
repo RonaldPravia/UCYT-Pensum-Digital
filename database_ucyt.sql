@@ -250,3 +250,93 @@ JOIN `carreras` c ON pe.id_carrera = c.id_carrera
 LEFT JOIN `expediente_asignaturas` ea ON e.id_estudiante = ea.id_estudiante
 LEFT JOIN `asignaturas` a ON ea.id_asignatura = a.id_asignatura
 GROUP BY e.id_estudiante;
+
+
+-- ====================================================================
+-- 9. TABLA DE ASIGNACIONES DOCENTES (CARGA ACADÉMICA)
+-- ====================================================================
+DROP TABLE IF EXISTS `recepcion_estudiantes`;
+DROP TABLE IF EXISTS `asignaciones_docente`;
+
+CREATE TABLE `asignaciones_docente` (
+  `id_asignacion` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_docente` INT NOT NULL,
+  `id_asignatura` INT NOT NULL,
+  `periodo` VARCHAR(50) NOT NULL DEFAULT 'I Cuatrimestre 2026',
+  `turno` ENUM('Diurno (Presencial)', 'Por Encuentro (Sabatino)', 'Dominical') DEFAULT 'Por Encuentro (Sabatino)',
+  `grupo` VARCHAR(20) DEFAULT 'INF-1A',
+  `aula` VARCHAR(60) DEFAULT 'Laboratorio de Cómputo 1',
+  `horario` VARCHAR(80) DEFAULT 'Sábados 8:00 AM - 12:00 PM',
+  FOREIGN KEY (`id_docente`) REFERENCES `docentes`(`id_docente`) ON DELETE CASCADE,
+  FOREIGN KEY (`id_asignatura`) REFERENCES `asignaturas`(`id_asignatura`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ====================================================================
+-- 10. TABLA DE RECEPCIÓN Y LISTA DE ASISTENCIA / NOTAS POR CURSO
+-- ====================================================================
+CREATE TABLE `recepcion_estudiantes` (
+  `id_recepcion` INT AUTO_INCREMENT PRIMARY KEY,
+  `id_asignacion` INT NOT NULL,
+  `id_estudiante` INT NOT NULL,
+  `estado_recepcion` ENUM('pendiente', 'recibido', 'baja') DEFAULT 'pendiente',
+  `fecha_recepcion` DATETIME NULL,
+  `prerrequisito_validado` BOOLEAN DEFAULT TRUE,
+  `observacion_docente` VARCHAR(255) NULL,
+  `nota_acumulado` DECIMAL(5,2) DEFAULT 0.00,
+  `nota_examen` DECIMAL(5,2) DEFAULT 0.00,
+  `nota_final` DECIMAL(5,2) DEFAULT 0.00,
+  UNIQUE KEY `uk_asignacion_estudiante` (`id_asignacion`, `id_estudiante`),
+  FOREIGN KEY (`id_asignacion`) REFERENCES `asignaciones_docente`(`id_asignacion`) ON DELETE CASCADE,
+  FOREIGN KEY (`id_estudiante`) REFERENCES `estudiantes`(`id_estudiante`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Asignaciones de Materias para el Prof. Ronald Pravia (id_docente = 1)
+INSERT INTO `asignaciones_docente` (`id_asignacion`, `id_docente`, `id_asignatura`, `periodo`, `turno`, `grupo`, `aula`, `horario`) VALUES
+(1, 1, 8, 'I Cuatrimestre 2026', 'Por Encuentro (Sabatino)', 'INF-1S', 'Lab de Informática 1', 'Sábados 8:00 AM - 12:00 PM'),
+(2, 1, 1, 'I Cuatrimestre 2026', 'Por Encuentro (Sabatino)', 'INF-1S', 'Edificio A - Aula 204', 'Sábados 1:00 PM - 4:45 PM'),
+(3, 1, 16, 'I Cuatrimestre 2026', 'Diurno (Presencial)', 'INF-2D', 'Lab de Redes y SO', 'Lunes y Miércoles 8:00 AM - 10:15 AM');
+
+-- Recepción de Estudiantes en el Curso: Introducción a la Computación (id_asignacion = 1)
+INSERT INTO `recepcion_estudiantes` (`id_asignacion`, `id_estudiante`, `estado_recepcion`, `fecha_recepcion`, `prerrequisito_validado`, `observacion_docente`, `nota_acumulado`, `nota_examen`, `nota_final`) VALUES
+(1, 1, 'recibido', NOW(), TRUE, 'Estudiante puntual con equipo propio.', 45.00, 42.00, 87.00),
+(1, 2, 'recibido', NOW(), TRUE, 'Nuevo ingreso regular.', 48.00, 45.00, 93.00),
+(1, 3, 'pendiente', NULL, TRUE, 'Pendiente de entrega de carnet físico.', 0.00, 0.00, 0.00);
+
+-- Recepción en Administración General (id_asignacion = 2)
+INSERT INTO `recepcion_estudiantes` (`id_asignacion`, `id_estudiante`, `estado_recepcion`, `fecha_recepcion`, `prerrequisito_validado`, `observacion_docente`) VALUES
+(2, 1, 'recibido', NOW(), TRUE, 'Presente en primera sesión.'),
+(2, 2, 'pendiente', NULL, TRUE, 'Esperando confirmación de matrícula.');
+
+-- ====================================================================
+-- VISTA CONVENIENTE: Lista de Estudiantes por Docente y Asignatura
+-- ====================================================================
+CREATE OR REPLACE VIEW `vista_recepcion_estudiantes_docente` AS
+SELECT 
+    ad.id_asignacion,
+    d.id_docente,
+    CONCAT(d.nombres, ' ', d.apellidos) AS docente,
+    a.codigo AS codigo_materia,
+    a.nombre AS asignatura,
+    a.cuatrimestre,
+    ad.periodo,
+    ad.turno,
+    ad.grupo,
+    ad.aula,
+    ad.horario,
+    e.id_estudiante,
+    e.carnet,
+    CONCAT(e.nombres, ' ', e.apellidos) AS estudiante,
+    u.email AS correo_estudiante,
+    e.tipo_ingreso,
+    re.estado_recepcion,
+    re.fecha_recepcion,
+    re.prerrequisito_validado,
+    re.nota_acumulado,
+    re.nota_examen,
+    re.nota_final
+FROM `asignaciones_docente` ad
+JOIN `docentes` d ON ad.id_docente = d.id_docente
+JOIN `asignaturas` a ON ad.id_asignatura = a.id_asignatura
+JOIN `recepcion_estudiantes` re ON ad.id_asignacion = re.id_asignacion
+JOIN `estudiantes` e ON re.id_estudiante = e.id_estudiante
+JOIN `usuarios` u ON e.id_usuario = u.id_usuario;
